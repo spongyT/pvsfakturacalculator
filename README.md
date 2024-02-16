@@ -12,7 +12,7 @@ Es werden keine keine Daten an irgendwelche Services rausgesendet.
 
 **DISCLAIMER** 
 > :warning: Das Tool wurde in der Freizeit entwickelt und weiterentwickelt. Alle ausgegeben Angaben
-sind nach bestem Gewissen ermittelt aber ohne jegliche rechtliche gewähr. Bitte prüft eure Stunden
+sind nach bestem Gewissen ermittelt aber ohne jegliche rechtliche Gewähr. Bitte prüft eure Stunden
 selbstständig nach und nutzt das Tool ggfs. als Unterstützung.
 
 ## Installation
