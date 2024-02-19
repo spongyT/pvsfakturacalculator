@@ -29,5 +29,8 @@ Die Chrome-Erweiterung ist nur auf der Überstundenseite aktiv. Öffnet in PVS-D
 und ihr solltet das Overlay mit allen Informationen sehen.
 
 ## Troubleshooting
+Beim ersten Aufruf der Überstundenseite nach dem Login hat die Seite andere Identifier. Darum können die Werte nicht ermittelt werden. 
+Hier hilft ein Refresh der Seite.
+
 Beim Monatswechsel und der Aktualisierung der Seite wird das Plugin manchmal nicht angezeigt. Oft hilft dann ein 
 einfacher Refresh der Seite (F5).

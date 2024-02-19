@@ -1,10 +1,13 @@
 const workingHoursPerDay = 8;
 const appName = 'PVS Fakturarechner';
+let numberOfRuns = 3;
 // Utils
 const speaker = (msg) => `${appName}: ${msg}`;
 const log = (msg) => console.log(speaker(msg));
+const warn = (msg) => console.log(speaker(`WARN ${msg}`));
+const error = (msg) => console.log(speaker(`ERROR ${msg}`));
 const parseFloatFromTextContent = (content) =>
-  content !== undefined ? parseFloat(content.replaceAll(',', '.')) : undefined;
+  content !== undefined && content.length > 0 ? parseFloat(content.replaceAll(',', '.')) : undefined;
 function createElement(elementName, text) {
   const el = document.createElement(elementName);
   el.textContent = text;
@@ -19,18 +22,51 @@ function setStyles(element, style) {
 }
 
 function getElementById(id) {
-  return document.querySelector(`#${id}`);
-}
+  let element = document.querySelector(`#${id}`);
+  // if (element === null) {
+  //   // Try to get the element with this mystrious P11_U-Ids
+  //   const u_id = id.replace('P11_P_', 'P11_U_');
+  //   element = document.querySelector(`#${u_id}`);
+  //
+  //   if (element !== null) {
+  //     log(`Found element by u_id: ${u_id}`);
+  //   }
+  // }
 
+  if (element === null) {
+    throw new Error(`Element by id=${id} required, but not found`);
+  }
+
+  return element;
+}
 // Create result container
 const resultDiv = document.createElement('div');
 resultDiv.id = 'resultDiv';
 
-const runCalculator = () => {
+/**
+ * Wrapper function that runs the calculator, catching errors and adds retry logic
+ */
+const run = () => {
+  try {
+    calculator();
+  } catch (e) {
+    warn(`Fehler: ${e}`);
+
+    numberOfRuns--;
+    if (numberOfRuns > 0) {
+      setTimeout(run, 1000);
+    } else {
+      error('Konnte die korrekten Daten nicht ermitteln.');
+    }
+  }
+};
+
+/**
+ * The PVS Faktura calculation
+ */
+const calculator = () => {
   // Collect data
-  const shouldDaysElement = getElementById('P11_P_SOLL_TAGE');
-  log(shouldDaysElement.textContent);
-  const shouldDays = parseFloatFromTextContent(shouldDaysElement.textContent) ?? 0;
+  const shouldDays = parseFloatFromTextContent(getElementById('P11_P_SOLL_TAGE').textContent) ?? 0;
   log('Solltage: ' + shouldDays);
 
   const holidayHours = parseFloatFromTextContent(getElementById('P11_P_URLAUB').textContent) ?? 0;
@@ -87,31 +123,23 @@ const runCalculator = () => {
   const isHours = parseFloatFromTextContent(getElementById('P11_P_IST_STUNDEN').textContent) ?? 0;
   log('Ist-Stunden: ' + isHours);
 
-  // Hochrechnungen
-  log('');
-  log('Na dann rechnen wir mal hoch was du diesen Monat voraussichtlich schaffen wirst.');
-  log('');
+  if (shouldDays <= 0 || shouldDays > 30 || shouldTime <= 0 || unBookedDays > shouldDays) {
+    throw new Error('Einige Werte sind nicht plausibel. Ich beginne die Rechnung von vorne.');
+  }
 
-  const estimatedIsHours = isHours + unBookedDays * workingHoursPerDay;
-  log('Voraussichtliche Ist-Stunden: ' + estimatedIsHours);
-
-  const estimatedIsBalance = estimatedIsHours - shouldTime;
-  log('Voraussichtliche Stundenbilanz: ' + estimatedIsBalance.toFixed(2));
-
-  const estimatedAccountedHours =
-    bookedHours +
-    developmentHours +
-    aquisitionHours +
-    humanAquisitionHours +
-    teachingHours +
-    unBookedDays * workingHoursPerDay;
-  log('Voraussichtliche fakturierte Stunden: ' + estimatedAccountedHours);
-
-  const estimatedBonusAwardedHours = estimatedAccountedHours - accountableHoursBreak;
-  log('Voraussichtliche prämienrelevante Stunden: ' + estimatedBonusAwardedHours.toFixed(2));
-
-  const estimatedOverTimeHours = Math.max(0, estimatedAccountedHours - adjustedShouldTime);
-  log('Voraussichtliche Überstunden: ' + estimatedOverTimeHours);
+  const estimationResult = estimateResultsForThisMonth({
+    shouldDays,
+    shouldTime,
+    adjustedShouldTime,
+    teachingHours,
+    isHours,
+    accountableHoursBreak,
+    humanAquisitionHours,
+    aquisitionHours,
+    developmentHours,
+    bookedHours,
+    unBookedDays,
+  });
 
   // Output
   const colorGreen = '#86db67';
@@ -119,15 +147,17 @@ const runCalculator = () => {
 
   resultDiv.innerHTML = '';
   resultDiv.append(createElement('h4', appName));
-  resultDiv.append(createSpan(`IST/SOLL: ${estimatedIsHours.toFixed(2)}/${shouldTime.toFixed(2)}`));
-  resultDiv.append(createSpan(`Bilanz: ${estimatedIsBalance.toFixed(2)}h`));
+  resultDiv.append(createSpan(`IST/SOLL: ${estimationResult.estimatedIsHours.toFixed(2)}/${shouldTime.toFixed(2)}`));
+  resultDiv.append(createSpan(`Bilanz: ${estimationResult.estimatedIsBalance.toFixed(2)}h`));
   resultDiv.append(createSpan(`Urlaub: ${holidayHours.toFixed(2)}h`));
   resultDiv.append(createSpan(`Krankheit: ${illHours.toFixed(2)}h`));
   resultDiv.append(createSpan(`SOLL (Bereinigt): ${adjustedShouldTime.toFixed(2)}h`));
   resultDiv.append(
-    createSpan(`Prämienrelevant/SOLL: ${estimatedAccountedHours.toFixed(2)}/${adjustedShouldTime.toFixed(2)}`)
+    createSpan(
+      `Prämienrelevant/SOLL: ${estimationResult.estimatedAccountedHours.toFixed(2)}/${adjustedShouldTime.toFixed(2)}`
+    )
   );
-  resultDiv.append(createSpan(`Überstunden: ${estimatedOverTimeHours.toFixed(2)}h`));
+  resultDiv.append(createSpan(`Überstunden: ${estimationResult.estimatedOverTimeHours.toFixed(2)}h`));
 
   const madeWithLoveEl = createElement('h5', 'made with ♡');
   setStyles(madeWithLoveEl, {
@@ -142,7 +172,7 @@ const runCalculator = () => {
     right: '10px',
     boxShadow: '0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19)',
     'z-index': 1000,
-    backgroundColor: estimatedIsBalance >= 0 ? colorGreen : colorRed,
+    backgroundColor: estimationResult.estimatedIsBalance >= 0 ? colorGreen : colorRed,
     padding: '12px',
     display: 'flex',
     'flex-direction': 'column',
@@ -150,10 +180,46 @@ const runCalculator = () => {
   setStyles(resultDiv, style);
   document.body.append(resultDiv);
 
-  if (estimatedOverTimeHours >= 0) {
+  if (estimationResult.estimatedOverTimeHours >= 0) {
     log('GOOD JOB!');
   }
 };
+
+function estimateResultsForThisMonth(inputs) {
+  // Hochrechnungen
+  log('');
+  log('Na dann rechnen wir mal hoch was du diesen Monat voraussichtlich schaffen wirst.');
+  log('');
+
+  const estimatedIsHours = inputs.isHours + inputs.unBookedDays * workingHoursPerDay;
+  log('Voraussichtliche Ist-Stunden: ' + inputs.estimatedIsHours);
+
+  const estimatedIsBalance = estimatedIsHours - inputs.shouldTime;
+  log('Voraussichtliche Stundenbilanz: ' + estimatedIsBalance.toFixed(2));
+
+  const estimatedAccountedHours =
+    inputs.bookedHours +
+    inputs.developmentHours +
+    inputs.aquisitionHours +
+    inputs.humanAquisitionHours +
+    inputs.teachingHours +
+    inputs.unBookedDays * workingHoursPerDay;
+  log('Voraussichtliche fakturierte Stunden: ' + estimatedAccountedHours);
+
+  const estimatedBonusAwardedHours = estimatedAccountedHours - inputs.accountableHoursBreak;
+  log('Voraussichtliche prämienrelevante Stunden: ' + estimatedBonusAwardedHours.toFixed(2));
+
+  const estimatedOverTimeHours = Math.max(0, estimatedAccountedHours - inputs.adjustedShouldTime);
+  log('Voraussichtliche Überstunden: ' + estimatedOverTimeHours);
+
+  return {
+    estimatedAccountedHours,
+    estimatedBonusAwardedHours,
+    estimatedOverTimeHours,
+    estimatedIsHours,
+    estimatedIsBalance,
+  };
+}
 
 // Start the routing
 log('Hallo Meister. Schauen wir mal was deine Stunden heute machen...');
@@ -166,8 +232,8 @@ const bodyObserver = new MutationObserver(() => {
     console.log('Target node found');
     bodyObserver.disconnect();
     console.log('Target node is here!');
-    runCalculator();
-    const observer = new MutationObserver(runCalculator);
+    run();
+    const observer = new MutationObserver(run);
     observer.observe(targetNode, {
       attributes: true,
       childList: true,
