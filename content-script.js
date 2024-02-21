@@ -46,7 +46,7 @@ function getElementById(id) {
 }
 // Create result container
 const resultDiv = document.createElement('div');
-resultDiv.id = 'pfc_root';
+resultDiv.setAttribute('data-testid', 'pfc_root');
 
 /**
  * Wrapper function that runs the calculator, catching errors and adds retry logic

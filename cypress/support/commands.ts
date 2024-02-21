@@ -23,6 +23,15 @@
 //
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
+Cypress.Commands.add('getByTestId', (id: string) => {
+  const selector = `[data-testid="${id}"]`;
+  return cy.get(selector);
+});
+
+Cypress.Commands.add('findByTestId', { prevSubject: 'element' }, (subject, id) => {
+  const selector = `[data-testid^="${id}"]`;
+  return cy.wrap(subject, { log: false }).find(selector);
+});
 
 Cypress.Commands.add('openLandingPage', () => {
   cy.visit('ords/f?p=2000:1:8982961480578');
