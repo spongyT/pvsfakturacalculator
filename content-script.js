@@ -14,6 +14,11 @@ function createElement(elementName, text) {
   return el;
 }
 const createSpan = (text) => createElement('span', text);
+const createKeyValueDiv = (key, value) => {
+  const div = createElement('div');
+  div.append(createSpan(`${key}:`), createSpan(value));
+  return div;
+};
 
 function setStyles(element, style) {
   for (let entry of Object.entries(style)) {
@@ -41,7 +46,7 @@ function getElementById(id) {
 }
 // Create result container
 const resultDiv = document.createElement('div');
-resultDiv.id = 'resultDiv';
+resultDiv.id = 'pfc_root';
 
 /**
  * Wrapper function that runs the calculator, catching errors and adds retry logic
@@ -146,18 +151,19 @@ const calculator = () => {
   const colorRed = '#e28b4f';
 
   resultDiv.innerHTML = '';
-  resultDiv.append(createElement('h4', appName));
-  resultDiv.append(createSpan(`IST/SOLL: ${estimationResult.estimatedIsHours.toFixed(2)}/${shouldTime.toFixed(2)}`));
-  resultDiv.append(createSpan(`Bilanz: ${estimationResult.estimatedIsBalance.toFixed(2)}h`));
-  resultDiv.append(createSpan(`Urlaub: ${holidayHours.toFixed(2)}h`));
-  resultDiv.append(createSpan(`Krankheit: ${illHours.toFixed(2)}h`));
-  resultDiv.append(createSpan(`SOLL (Bereinigt): ${adjustedShouldTime.toFixed(2)}h`));
   resultDiv.append(
-    createSpan(
-      `Prämienrelevant/SOLL: ${estimationResult.estimatedAccountedHours.toFixed(2)}/${adjustedShouldTime.toFixed(2)}`
-    )
+    createElement('h4', appName),
+    createKeyValueDiv('IST/SOLL', `${estimationResult.estimatedIsHours.toFixed(2)}/${shouldTime.toFixed(2)}`),
+    createKeyValueDiv('Bilanz', `${estimationResult.estimatedIsBalance.toFixed(2)}h`),
+    createKeyValueDiv('Urlaub', `${holidayHours.toFixed(2)}h`),
+    createKeyValueDiv('Krankheit', `${illHours.toFixed(2)}h`),
+    createKeyValueDiv('SOLL (Bereinigt)', `${adjustedShouldTime.toFixed(2)}h`),
+    createKeyValueDiv(
+      `Prämienrelevant/SOLL`,
+      `${estimationResult.estimatedAccountedHours.toFixed(2)}/${adjustedShouldTime.toFixed(2)}`
+    ),
+    createKeyValueDiv(`Überstunden`, `${estimationResult.estimatedOverTimeHours.toFixed(2)}h`)
   );
-  resultDiv.append(createSpan(`Überstunden: ${estimationResult.estimatedOverTimeHours.toFixed(2)}h`));
 
   const madeWithLoveEl = createElement('h5', 'made with ♡');
   setStyles(madeWithLoveEl, {
